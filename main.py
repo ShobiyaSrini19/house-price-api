@@ -11,7 +11,7 @@ model = joblib.load("house_model.pkl")
 
 
 # ----------------------------
-# FastAPI endpoint (INR)
+# FastAPI endpoint (USD)
 # ----------------------------
 class Input(BaseModel):
     data: Optional[list] = [8.3252, 41.0, 6.98, 1.02, 322, 2.55, 37.88, -122.23]
@@ -19,8 +19,9 @@ class Input(BaseModel):
 @app.post("/predict")
 def predict(input: Input):
     pred = model.predict([input.data])[0]
-    price_in_inr = pred * 100000 * 85
-    return {"prediction_in_inr": int(price_in_inr)}
+    # Model output is in $100,000 units
+    price_usd = pred * 100000
+    return {"prediction_usd": price_usd}
 
 
 # ----------------------------
@@ -34,11 +35,10 @@ def gradio_predict(MedInc, HouseAge, AveRooms, AveBedrms,
         Population, AveOccup, Latitude, Longitude
     ]
 
-    pred = model.predict([data])[0]
-    price_usd = pred * 100000
-    price_inr = price_usd * 85
+    pred = model.predict([data])[0]     # model output ($100k units)
+    price_usd = pred * 100000           # convert to actual dollars
 
-    return f"💰 Estimated House Price: ₹{price_inr:,.0f}"
+    return f"💰 Estimated House Price: ${price_usd:,.2f}"
 
 
 # ----------------------------
@@ -74,9 +74,9 @@ ui = gr.Interface(
         gr.Number(label="📍 Latitude", value=37.88),
         gr.Number(label="📍 Longitude", value=-122.23),
     ],
-    outputs=gr.Textbox(label="Predicted Price (INR)"),
-    title="🏡 House Price Predictor (INR)",
-    description="Enter house details to estimate its value in Indian Rupees (₹).",
+    outputs=gr.Textbox(label="Predicted Price (USD)"),
+    title="🏡 House Price Predictor (USD)",
+    description="Enter house details to estimate its value in U.S. Dollars ($).",
     theme=custom_theme,
 )
 
