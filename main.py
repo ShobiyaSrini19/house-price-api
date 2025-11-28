@@ -6,12 +6,12 @@ import gradio as gr
 
 app = FastAPI()
 
-# Load Model
+# Load ML model
 model = joblib.load("house_model.pkl")
 
 
 # ----------------------------
-# FASTAPI PREDICT ENDPOINT
+# FastAPI endpoint
 # ----------------------------
 class Input(BaseModel):
     data: Optional[list] = [8.3252, 41.0, 6.98, 1.02, 322, 2.55, 37.88, -122.23]
@@ -19,43 +19,30 @@ class Input(BaseModel):
 @app.post("/predict")
 def predict(input: Input):
     pred = model.predict([input.data])[0]
-    inr_price = pred * 100000 * 85  # USD → INR
-    return {"prediction_in_inr": int(inr_price)}
+    price_in_inr = pred * 100000 * 85
+    return {"prediction_in_inr": int(price_in_inr)}
 
 
 # ----------------------------
-# GRADIO UI FUNCTION
+# Gradio UI Function
 # ----------------------------
-def gradio_predict(
-    MedInc, HouseAge, AveRooms, AveBedrms, Population, AveOccup, Latitude, Longitude
-):
+def gradio_predict(MedInc, HouseAge, AveRooms, AveBedrms,
+                   Population, AveOccup, Latitude, Longitude):
     data = [
-        MedInc,
-        HouseAge,
-        AveRooms,
-        AveBedrms,
-        Population,
-        AveOccup,
-        Latitude,
-        Longitude,
+        MedInc, HouseAge, AveRooms, AveBedrms,
+        Population, AveOccup, Latitude, Longitude
     ]
+    
+    pred = model.predict([data])[0]
+    price_in_usd = pred * 100000
+    price_in_inr = price_in_usd * 85
 
-    pred = model.predict([data])[0]          # model output (in $100k)
-    price_in_usd = pred * 100000             # convert to USD
-    price_in_inr = price_in_usd * 85         # convert to INR
-
-    return f"🏡 Estimated House Price: ₹{price_in_inr:,.0f} INR"
+    return f"Estimated House Price: ₹{price_in_inr:,.0f}"
 
 
 # ----------------------------
-# BEAUTIFUL UI
+# Gradio UI (v4 compatible)
 # ----------------------------
-css = """
-#root {background: linear-gradient(135deg, #6a11cb, #2575fc); height: 100vh;}
-h1 {color: white !important; text-align: center !important;}
-p {color: #f0f0f0 !important; text-align: center;}
-"""
-
 ui = gr.Interface(
     fn=gradio_predict,
     inputs=[
@@ -69,16 +56,16 @@ ui = gr.Interface(
         gr.Number(label="Longitude", value=-122.23),
     ],
     outputs=gr.Textbox(label="Predicted Price (INR)"),
-    title="🏡 House Price Predictor (INR Version)",
-    description="Enter the values below to get the house price in Indian Rupees (₹).",
-    css=css,
+    title="🏡 House Price Predictor (INR)",
+    description="Enter housing details to predict selling price (converted to Indian Rupees ₹).",
+    theme=gr.themes.Soft()   # 🌈 Beautiful theme that works in Gradio v4
 )
 
+# Mount inside FastAPI
 app = gr.mount_gradio_app(app, ui, path="/gradio")
 
 
-
-# Run Locally
+# Run locally
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=10000)
